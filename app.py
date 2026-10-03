@@ -158,8 +158,16 @@ def fetch_appointments(job_id):
             headers=headers(),
             timeout=20,
         )
-        r.raise_for_status()
+
+        if not r.ok:
+            print(
+                f"HCP appointment error for {job_id}: "
+                f"STATUS={r.status_code} RESPONSE={r.text}"
+            )
+            return []
+
         return extract_items(r.json())
+
     except Exception as e:
         print(f"Could not load appointments for job {job_id}: {e}")
         return []
