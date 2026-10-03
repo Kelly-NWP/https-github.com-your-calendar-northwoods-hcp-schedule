@@ -178,20 +178,20 @@ def fetch_appointments(job_id):
 @app.get("/")
 def index():
     return render_template("index.html")
-
 @app.get("/api/jobs")
 def jobs():
     try:
- raw = fetch_jobs()
+        raw = fetch_jobs()
 
         for job in raw:
             name = get_name(job)
             if any(x in name.lower() for x in ["kevin fisk", "mike & nancy", "steve altier"]):
                 print(f"FOUND TEST JOB: {name} | ID={job.get('id')} | JOB={job}")
 
-        result = []     
+        result = []
 
         for job in raw:
+
             job_id = job.get("id")
             appointments = fetch_appointments(job_id) if job_id else []
 
