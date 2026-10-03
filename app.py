@@ -183,6 +183,10 @@ def index():
 def jobs():
     try:
         raw = fetch_jobs()
+        for job in raw:
+    name = get_name(job)
+    if any(x in name.lower() for x in ["kevin fisk", "mike & nancy", "steve altier"]):
+        print(f"FOUND TEST JOB: {name} | ID={job.get('id')} | JOB={job}")
         result = []
 
         for job in raw:
