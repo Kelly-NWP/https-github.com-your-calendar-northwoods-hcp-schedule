@@ -109,17 +109,12 @@ def fetch_jobs():
     if not API_KEY:
         raise RuntimeError("HCP_API_KEY is not configured.")
 
-    now = datetime.now(timezone.utc)
-    end = now + timedelta(days=70)
-
     all_jobs = []
     page = 1
     page_size = 200
 
     while True:
         params = {
-            "scheduled_start_min": iso(now - timedelta(days=7)),
-            "scheduled_start_max": iso(end),
             "page": page,
             "page_size": page_size,
         }
@@ -130,6 +125,7 @@ def fetch_jobs():
             params=params,
             timeout=20,
         )
+
         r.raise_for_status()
 
         jobs = extract_items(r.json())
@@ -139,15 +135,22 @@ def fetch_jobs():
 
         all_jobs.extend(jobs)
 
+        print(
+            f"HCP jobs page {page}: "
+            f"{len(jobs)} jobs; total so far {len(all_jobs)}"
+        )
+
         if len(jobs) < page_size:
             break
 
         page += 1
 
-        # Safety limit so a bad API response cannot loop forever.
+        # Safety limit
         if page > 50:
+            print("Stopped after 50 pages of HCP jobs.")
             break
 
+    print(f"HCP TOTAL JOBS RETRIEVED: {len(all_jobs)}")
     return all_jobs
 
 def fetch_appointments(job_id):
