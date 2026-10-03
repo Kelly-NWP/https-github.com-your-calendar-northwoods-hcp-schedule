@@ -1,0 +1,88 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Northwoods Plumbing Schedule</title>
+<style>
+:root{--green:#063f36;--line:#b9c8c5;--paper:#f8fbfa}
+*{box-sizing:border-box} body{margin:0;background:#e9efed;font-family:Arial,Helvetica,sans-serif;color:#101716}
+header{height:90px;background:var(--green);color:white;display:grid;grid-template-columns:1fr 1.3fr 1fr;align-items:center;padding:10px 24px}
+.brand{font-size:30px;font-weight:900;letter-spacing:1px}.brand small{display:block;font-size:13px;letter-spacing:5px}
+.title{text-align:center;font-size:31px;font-weight:900}.title small{display:block;font-size:17px;margin-top:4px}
+.legend{display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap;font-weight:700;font-size:14px}
+.key{display:flex;align-items:center;gap:5px}.swatch{width:18px;height:18px;border:1px solid #fff;border-radius:3px}
+#status{padding:5px 14px;background:#fff7d6;font-size:12px;text-align:center;display:none}
+.month{background:white;margin:8px;border:1px solid #91aaa4;border-radius:6px;overflow:hidden}
+.month-title{background:var(--green);color:white;font-size:25px;font-weight:900;padding:5px 12px}
+.weekdays,.week{display:grid;grid-template-columns:repeat(7,1fr)}
+.weekdays>div{text-align:center;font-weight:800;font-size:12px;padding:5px;background:#edf4f2;border-right:1px solid var(--line)}
+.day{min-height:132px;padding:5px;border-top:1px solid var(--line);border-right:1px solid var(--line);background:var(--paper)}
+.day.other{opacity:.34}.date{font-weight:900;font-size:17px;margin-bottom:3px}
+.job{border-radius:5px;color:white;padding:4px 6px;margin:3px 0;line-height:1.05;box-shadow:0 1px 1px #0002}
+.job.light{color:#101716}.job-name{font-size:13px;font-weight:900}.job-desc{font-size:11px;margin-top:2px}
+@media(max-width:1000px){.day{min-height:100px}.job-name{font-size:11px}.job-desc{font-size:10px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">NORTHWOODS<small>PLUMBING LLC</small></div>
+  <div class="title">SCHEDULE<small id="rangeTitle"></small></div>
+  <div class="legend">
+    <span class="key"><i class="swatch" style="background:#2f80ed"></i>Dylan</span>
+    <span class="key"><i class="swatch" style="background:#e53935"></i>Spencer</span>
+    <span class="key"><i class="swatch" style="background:#2e9d50"></i>Dawson</span>
+    <span class="key"><i class="swatch" style="background:#222"></i>Brian</span>
+  </div>
+</header>
+<div id="status"></div>
+<main id="calendar"></main>
+<script>
+const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+let jobs=[];
+function key(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+function textColorClass(hex){let c=hex.replace("#",""); if(c.length!==6)return ""; let r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16); return (r*299+g*587+b*114)/1000>175?"light":""}
+function monthHTML(year,month){
+  const first=new Date(year,month,1), last=new Date(year,month+1,0);
+  const start=new Date(year,month,1-first.getDay());
+  const end=new Date(year,month,last.getDate()+(6-last.getDay()));
+  let h=`<section class="month"><div class="month-title">${MONTHS[month].toUpperCase()} ${year}</div><div class="weekdays">${["SUNDAY","MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY"].map(x=>`<div>${x}</div>`).join("")}</div>`;
+  let d=new Date(start);
+  while(d<=end){
+    h+=`<div class="week">`;
+    for(let i=0;i<7;i++){
+      let k=key(d), same=d.getMonth()===month;
+      h+=`<div class="day ${same?"":"other"}"><div class="date">${d.getDate()}</div>`;
+      if(same){
+        jobs.filter(j=>j.date===k).forEach(j=>{
+          h+=`<div class="job ${textColorClass(j.color)}" style="background:${j.color}"><div class="job-name">${esc(j.name)}</div><div class="job-desc">${esc(j.description||"")}</div></div>`;
+        });
+      }
+      h+=`</div>`; d.setDate(d.getDate()+1);
+    }
+    h+=`</div>`;
+  }
+  return h+`</section>`;
+}
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function render(){
+  const now=new Date(), y=now.getFullYear(), m=now.getMonth();
+  const n=new Date(y,m+1,1);
+  document.getElementById("rangeTitle").textContent=`${MONTHS[m].toUpperCase()} / ${MONTHS[n.getMonth()].toUpperCase()} ${n.getFullYear()}`;
+  document.getElementById("calendar").innerHTML=monthHTML(y,m)+monthHTML(n.getFullYear(),n.getMonth());
+}
+async function refresh(){
+  try{
+    const r=await fetch("/api/jobs",{cache:"no-store"}), data=await r.json();
+    if(!data.ok) throw new Error(data.error||"Unable to load schedule");
+    jobs=data.jobs||[];
+    document.getElementById("status").style.display="none";
+  }catch(e){
+    const s=document.getElementById("status"); s.textContent="Housecall Pro connection: "+e.message; s.style.display="block";
+  }
+  render();
+}
+refresh(); setInterval(refresh,300000);
+</script>
+</body></html>
