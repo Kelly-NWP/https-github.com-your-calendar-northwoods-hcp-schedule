@@ -108,24 +108,47 @@ def color_for(job):
 def fetch_jobs():
     if not API_KEY:
         raise RuntimeError("HCP_API_KEY is not configured.")
+
     now = datetime.now(timezone.utc)
     end = now + timedelta(days=70)
 
-    # Current HCP installations can vary in supported filters, so try a filtered
-    # jobs request first and fall back to a basic jobs request.
-    attempts = [
-        ("/jobs", {"scheduled_start_min": iso(now - timedelta(days=7)), "scheduled_start_max": iso(end), "page_size": 200}),
-        ("/jobs", {"page_size": 200}),
-    ]
-    last_error = None
-    for path, params in attempts:
-        try:
-            r = requests.get(HCP_BASE.rstrip("/") + path, headers=headers(), params=params, timeout=20)
-            r.raise_for_status()
-            return extract_items(r.json())
-        except Exception as e:
-            last_error = e
-    raise last_error
+    all_jobs = []
+    page = 1
+    page_size = 200
+
+    while True:
+        params = {
+            "scheduled_start_min": iso(now - timedelta(days=7)),
+            "scheduled_start_max": iso(end),
+            "page": page,
+            "page_size": page_size,
+        }
+
+        r = requests.get(
+            HCP_BASE.rstrip("/") + "/jobs",
+            headers=headers(),
+            params=params,
+            timeout=20,
+        )
+        r.raise_for_status()
+
+        jobs = extract_items(r.json())
+
+        if not jobs:
+            break
+
+        all_jobs.extend(jobs)
+
+        if len(jobs) < page_size:
+            break
+
+        page += 1
+
+        # Safety limit so a bad API response cannot loop forever.
+        if page > 50:
+            break
+
+    return all_jobs
 
 @app.get("/")
 def index():
