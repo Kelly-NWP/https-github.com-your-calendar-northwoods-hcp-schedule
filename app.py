@@ -182,12 +182,14 @@ def index():
 @app.get("/api/jobs")
 def jobs():
     try:
-        raw = fetch_jobs()
+ raw = fetch_jobs()
+
         for job in raw:
-    name = get_name(job)
-    if any(x in name.lower() for x in ["kevin fisk", "mike & nancy", "steve altier"]):
-        print(f"FOUND TEST JOB: {name} | ID={job.get('id')} | JOB={job}")
-        result = []
+            name = get_name(job)
+            if any(x in name.lower() for x in ["kevin fisk", "mike & nancy", "steve altier"]):
+                print(f"FOUND TEST JOB: {name} | ID={job.get('id')} | JOB={job}")
+
+        result = []     
 
         for job in raw:
             job_id = job.get("id")
