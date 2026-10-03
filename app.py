@@ -150,6 +150,20 @@ def fetch_jobs():
 
     return all_jobs
 
+def fetch_appointments(job_id):
+    """Get all appointments scheduled for a Housecall Pro job."""
+    try:
+        r = requests.get(
+            HCP_BASE.rstrip("/") + f"/jobs/{job_id}/appointments",
+            headers=headers(),
+            timeout=20,
+        )
+        r.raise_for_status()
+        return extract_items(r.json())
+    except Exception as e:
+        print(f"Could not load appointments for job {job_id}: {e}")
+        return []
+
 @app.get("/")
 def index():
     return render_template("index.html")
@@ -159,19 +173,53 @@ def jobs():
     try:
         raw = fetch_jobs()
         result = []
+
         for job in raw:
-            start = get_start(job)
-            if not start:
-                continue
-            result.append({
-                "date": start.date().isoformat(),
-                "name": get_name(job),
-                "description": get_description(job),
-                "color": color_for(job),
-            })
+            job_id = job.get("id")
+            appointments = fetch_appointments(job_id) if job_id else []
+
+            # If this job has appointments, create a calendar entry
+            # for every appointment.
+            if appointments:
+                for appointment in appointments:
+                    start = get_start(appointment)
+                    if not start:
+                        continue
+
+                    # Combine job information with appointment information
+                    # so technician assignment can come from either one.
+                    combined = dict(job)
+                    combined.update(appointment)
+
+                    result.append({
+                        "date": start.date().isoformat(),
+                        "name": get_name(job),
+                        "description": get_description(job),
+                        "color": color_for(combined),
+                    })
+
+            # If HCP doesn't return appointments for this job,
+            # fall back to the original job schedule.
+            else:
+                start = get_start(job)
+                if not start:
+                    continue
+
+                result.append({
+                    "date": start.date().isoformat(),
+                    "name": get_name(job),
+                    "description": get_description(job),
+                    "color": color_for(job),
+                })
+
         return jsonify({"ok": True, "jobs": result})
+
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e), "jobs": []}), 500
+        return jsonify({
+            "ok": False,
+            "error": str(e),
+            "jobs": []
+        }), 500
 
 @app.get("/health")
 def health():
