@@ -169,7 +169,12 @@ def fetch_appointments(job_id):
             )
             return []
 
-        return extract_items(r.json())
+        data = r.json()
+
+        if job_id == "job_2fab67c6910a42db8a306113f39ac9b5":
+            print(f"MIKE NANCY APPOINTMENT RESPONSE: {data}")
+
+        return extract_items(data)
 
     except Exception as e:
         print(f"Could not load appointments for job {job_id}: {e}")
